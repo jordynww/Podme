@@ -1,0 +1,86 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Podme</title>
+    <meta name="description" content="Find podcasts worth your time and pick a verified place to listen.">
+    <link rel="stylesheet" href="./styles.css?v=podme-clean">
+  </head>
+  <body>
+    <main class="app-shell">
+      <section class="search-panel" aria-labelledby="app-title">
+        <p class="eyebrow">Picky podcast discovery</p>
+        <h1 id="app-title">Podme</h1>
+        <p class="lede">Ask by learning goal, market, topic, or niche. Podme ranks up to 100 shows and only displays platforms with verified links.</p>
+
+        <form class="search-form" id="search-form">
+          <label class="field">
+            <span>What do you want to learn?</span>
+            <textarea id="query" rows="4" placeholder="Give me the best podcasts where I can learn everything there is to know about PE/VC"></textarea>
+          </label>
+
+          <div class="controls">
+            <label class="control">
+              <span>Results</span>
+              <select id="limit">
+                <option value="25">25</option>
+                <option value="50">50</option>
+                <option value="100" selected>100</option>
+              </select>
+            </label>
+
+            <label class="control">
+              <span>Sort by</span>
+              <select id="sort">
+                <option value="relevance" selected>Best match</option>
+                <option value="episodes">Episode count</option>
+                <option value="recent">Recently updated</option>
+                <option value="name">Name</option>
+              </select>
+            </label>
+          </div>
+
+          <button class="primary-action" type="submit">Find the good stuff</button>
+        </form>
+      </section>
+
+      <section class="results-panel" aria-live="polite">
+        <div class="toolbar">
+          <div>
+            <p class="label">Ranked results</p>
+            <p id="status">Enter a query to search live podcast listings.</p>
+          </div>
+          <div class="toolbar-actions">
+            <button id="copy-button" type="button">Copy links</button>
+            <button id="csv-button" type="button">Export CSV</button>
+          </div>
+        </div>
+
+        <div class="insights">
+          <div><span id="result-count">0</span><p>shows</p></div>
+          <div><span id="query-focus">-</span><p>focus</p></div>
+          <div><span id="source-count">Apple</span><p>verified source</p></div>
+        </div>
+
+        <ol class="results-list" id="results-list"></ol>
+      </section>
+    </main>
+
+    <template id="result-template">
+      <li class="result-card">
+        <img class="artwork" alt="">
+        <div class="result-body">
+          <div class="result-topline"><span class="rank"></span><span class="score"></span></div>
+          <h2></h2>
+          <p class="creator"></p>
+          <p class="meta"></p>
+          <div class="tags"></div>
+          <div class="result-actions"></div>
+        </div>
+      </li>
+    </template>
+
+    <script src="./script.js?v=podme-clean"></script>
+  </body>
+</html>

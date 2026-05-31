@@ -41,7 +41,7 @@ async function getAccessToken() {
 exports.handler = async function handler(event) {
   try {
     const query = event.queryStringParameters?.q?.trim();
-    const limit = Math.min(Number(event.queryStringParameters?.limit || 20), 50);
+    const limit = Math.min(Number(event.queryStringParameters?.limit || 10), 10);
 
     if (!query) {
       return json(400, { error: "Missing q query parameter" });

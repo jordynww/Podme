@@ -14,6 +14,7 @@ const template = document.querySelector("#result-template");
 const defaultQuery = "Give me the best podcasts where I can learn everything there is to know about PE/VC";
 let currentResults = [];
 const stopWords = new Set("a about all an and are as at be best can do everything for from get give how i in into is it know learn me of on or podcast podcasts show shows that the there to want where with you".split(" "));
+const forcedExpansionTerms = new Set(["artificial intelligence", "machine learning"]);
 
 function normalize(text) {
   return text.toLowerCase().replace(/&/g, " and ").replace(/[^a-z0-9/+\s-]/g, " ").replace(/\s+/g, " ").trim();
@@ -24,7 +25,7 @@ function expandQuery(text) {
   const out = [];
   if (/\bpe\b|private equity/.test(n)) out.push("private equity", "buyouts", "investing");
   if (/\bvc\b|venture capital/.test(n)) out.push("venture capital", "startups", "company building");
-  if (/ai|artificial intelligence|machine learning/.test(n)) out.push("artificial intelligence", "machine learning");
+  if (/\bai\b|artificial intelligence|machine learning/.test(n)) out.push("artificial intelligence", "machine learning");
   if (/founder|startup|startups/.test(n)) out.push("founders", "startups");
   return out;
 }
@@ -71,8 +72,17 @@ function normalizeName(value) {
 
 function rank(results, query, sortMode) {
   const terms = extractTerms(query);
+  const requestedTerms = normalize(query)
+    .replace(/\//g, " ")
+    .split(" ")
+    .filter((word) => word.length > 2 && !stopWords.has(word));
   const seen = new Map();
   results.forEach((result) => {
+    const haystack = [result.collectionName, result.artistName, ...(result.genres || [])].join(" ").toLowerCase();
+    const hasRequestedTopic = requestedTerms.length === 0 || requestedTerms.some((term) => haystack.includes(term));
+    const hasOnlyForcedExpansion = terms.some((term) => forcedExpansionTerms.has(term)) && !hasRequestedTopic;
+    if (hasOnlyForcedExpansion) return;
+
     const id = result.collectionId || normalizeName(`${result.collectionName}-${result.artistName}`);
     const nameKey = normalizeName(result.collectionName || "");
     const scored = score(result, terms);

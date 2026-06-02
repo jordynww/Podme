@@ -133,7 +133,8 @@ function mergeSpotifyUrls(results, spotifyShows) {
 
 function placeholder(name) {
   const initials = name.split(/\s+/).filter(Boolean).slice(0, 2).map((word) => word[0].toUpperCase()).join("");
-  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="180" height="180"><rect width="180" height="180" fill="#e6ddff"/><circle cx="132" cy="42" r="34" fill="#ffa8d7"/><text x="90" y="98" text-anchor="middle" font-family="Arial" font-size="42" font-weight="800" fill="#141229">${initials || "P"}</text></svg>`;
+  const text = encodeURIComponent(initials || "P");
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="180" height="180"><rect width="180" height="180" fill="#e6ddff"/><circle cx="132" cy="42" r="34" fill="#ffa8d7"/><text x="90" y="98" text-anchor="middle" font-family="Arial" font-size="42" font-weight="800" fill="#141229">${text}</text></svg>`;
   return `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`;
 }
 
@@ -159,21 +160,25 @@ function render(results) {
     const node = template.content.cloneNode(true);
     const card = node.querySelector(".result-card");
     card.style.setProperty("--rank-color", index < 3 ? "#e74fa3" : "#6e5be8");
-    node.querySelector(".artwork").src = result.artworkUrl100 || placeholder(result.collectionName);
-    node.querySelector(".artwork").alt = `${result.collectionName} artwork`;
+    const artworkImg = node.querySelector(".artwork");
+    artworkImg.src = result.artworkUrl100 || placeholder(result.collectionName);
+    artworkImg.alt = result.collectionName || "Podcast artwork";
     node.querySelector(".rank").textContent = `#${index + 1}`;
     node.querySelector(".score").textContent = `${result.score} match score`;
-    node.querySelector("h2").textContent = result.collectionName;
-    node.querySelector(".creator").textContent = result.artistName;
+    node.querySelector("h2").textContent = result.collectionName || "Untitled";
+    node.querySelector(".creator").textContent = result.artistName || "Unknown";
     node.querySelector(".meta").textContent = `${result.trackCount || "?"} episodes`;
     const tags = node.querySelector(".tags");
+    tags.textContent = "";
     (result.matchedTerms.length ? result.matchedTerms : result.genres).slice(0, 5).forEach((tag) => {
       const pill = document.createElement("span");
-      pill.textContent = tag;
+      pill.textContent = tag || "";
       tags.append(pill);
     });
     const actions = node.querySelector(".result-actions");
+    actions.textContent = "";
     providers(result).forEach(([name, className, href]) => {
+      if (!href) return;
       const link = document.createElement("a");
       link.className = `provider-link ${className}`;
       link.href = href;
@@ -193,7 +198,6 @@ function syncUrl(query) {
 async function search() {
   const query = queryInput.value.trim() || defaultQuery;
   const limit = Number(limitInput.value);
-  queryInput.value = query;
   queryFocus.textContent = extractTerms(query).slice(0, 3).join(", ") || "podcasts";
   statusText.textContent = "Searching live podcast listings...";
   sourceCount.textContent = "Apple";
@@ -230,12 +234,27 @@ async function search() {
 }
 
 function resultLinks() {
-  return currentResults.map((result, index) => `${index + 1}. ${result.collectionName} - ${providers(result).map(([name, , href]) => `${name}: ${href}`).join(" | ")}`).join("\n");
+  return currentResults.map((result, index) => {
+    const links = providers(result).map(([name, , href]) => `${name}: ${href}`).join(" | ");
+    return `${index + 1}. ${result.collectionName} - ${links}`;
+  }).join("\n");
 }
 
 function csv() {
   const rows = [["Rank", "Podcast", "Creator", "Episodes", "Apple Link", "Spotify Link", "iHeart Link", "Score"]];
-  currentResults.forEach((result, index) => rows.push([index + 1, result.collectionName, result.artistName, result.trackCount, result.collectionViewUrl, result.spotifyUrl, result.iheartUrl, result.score]));
+  currentResults.forEach((result, index) => {
+    const row = [
+      index + 1,
+      result.collectionName || "",
+      result.artistName || "",
+      result.trackCount || 0,
+      result.collectionViewUrl || "",
+      result.spotifyUrl || "",
+      result.iheartUrl || "",
+      result.score || 0
+    ];
+    rows.push(row);
+  });
   return rows.map((row) => row.map((cell) => `"${String(cell).replace(/"/g, '""')}"`).join(",")).join("\n");
 }
 
@@ -264,7 +283,7 @@ csvButton.addEventListener("click", () => {
 });
 
 const params = new URLSearchParams(location.hash.slice(1));
-queryInput.value = params.get("q") || defaultQuery;
+if (params.get("q")) queryInput.value = params.get("q");
 if (params.get("limit")) limitInput.value = params.get("limit");
 if (params.get("sort")) sortInput.value = params.get("sort");
 render([]);

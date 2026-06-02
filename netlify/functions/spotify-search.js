@@ -52,7 +52,8 @@ exports.handler = async function handler(event) {
       q: query,
       type: "show",
       market: "US",
-      limit: String(limit)
+      limit: String(limit),
+      offset: "0"
     });
 
     const response = await fetch(`${SPOTIFY_SEARCH_URL}?${params.toString()}`, {
@@ -62,7 +63,18 @@ exports.handler = async function handler(event) {
     });
 
     if (!response.ok) {
-      throw new Error(`Spotify search failed with ${response.status}`);
+      const errorBody = await response.text();
+      return json(response.status, {
+        error: "Spotify search request failed",
+        spotifyStatus: response.status,
+        spotifyBody: errorBody,
+        request: {
+          q: query,
+          type: "show",
+          market: "US",
+          limit
+        }
+      });
     }
 
     const data = await response.json();

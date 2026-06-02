@@ -6,7 +6,6 @@ const statusText = document.querySelector("#status");
 const resultCount = document.querySelector("#result-count");
 const queryFocus = document.querySelector("#query-focus");
 const sourceCount = document.querySelector("#source-count");
-const copyButton = document.querySelector("#copy-button");
 const csvButton = document.querySelector("#csv-button");
 const resultsList = document.querySelector("#results-list");
 const template = document.querySelector("#result-template");
@@ -229,10 +228,6 @@ async function search() {
   }
 }
 
-function resultLinks() {
-  return currentResults.map((result, index) => `${index + 1}. ${result.collectionName} - ${providers(result).map(([name, , href]) => `${name}: ${href}`).join(" | ")}`).join("\n");
-}
-
 function csv() {
   const rows = [["Rank", "Podcast", "Creator", "Episodes", "Apple Link", "Spotify Link", "iHeart Link", "Score"]];
   currentResults.forEach((result, index) => rows.push([index + 1, result.collectionName, result.artistName, result.trackCount, result.collectionViewUrl, result.spotifyUrl, result.iheartUrl, result.score]));
@@ -246,12 +241,6 @@ form.addEventListener("submit", (event) => {
 sortInput.addEventListener("input", () => {
   currentResults = rank(currentResults, queryInput.value, sortInput.value).slice(0, Number(limitInput.value));
   render(currentResults);
-});
-copyButton.addEventListener("click", async () => {
-  if (!currentResults.length) return;
-  await navigator.clipboard.writeText(resultLinks());
-  copyButton.textContent = "Copied";
-  window.setTimeout(() => copyButton.textContent = "Copy links", 1400);
 });
 csvButton.addEventListener("click", () => {
   if (!currentResults.length) return;

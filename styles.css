@@ -71,6 +71,13 @@ textarea:focus, select:focus, button:focus-visible, a:focus-visible { outline: 3
 #status { max-width: 52rem; margin: 0; color: var(--muted); line-height: 1.45; }
 .toolbar-actions { display: flex; gap: 10px; flex-wrap: wrap; justify-content: flex-end; }
 .toolbar-actions button { padding: 0 16px; background: rgba(255,255,255,.52); color: var(--ink); }
+#csv-button {
+  width: 50%;
+  min-width: 132px;
+  background: linear-gradient(135deg, rgba(184,166,255,.92), rgba(226,194,255,.82));
+  color: #251b55;
+  box-shadow: 0 14px 30px rgba(110,91,232,.22), inset 0 1px 1px rgba(255,255,255,.76);
+}
 .insights { display: grid; grid-template-columns: .75fr 1.5fr .75fr; gap: 10px; margin: 16px 0; }
 .insights div { min-height: 86px; padding: 16px; border-radius: 24px; }
 .insights span { display: block; color: var(--ink); font-size: clamp(1.35rem, 3vw, 2rem); font-weight: 950; line-height: 1.05; }
@@ -106,6 +113,6 @@ h2 { margin: 6px 0 4px; font-size: clamp(1.1rem, 2.4vw, 1.45rem); line-height: 1
   .toolbar, .result-card { grid-template-columns: 1fr; }
   .toolbar { display: grid; }
   .toolbar-actions, .controls, .insights { grid-template-columns: 1fr; }
-  .toolbar-actions { display: grid; }
+  .toolbar-actions { display: flex; justify-content: flex-start; }
   .artwork { width: 96px; height: 96px; }
 }

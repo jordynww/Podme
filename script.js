@@ -352,18 +352,20 @@ async function search() {
       statusText.textContent = "No podcasts found. Try simpler keywords.";
       return;
     }
-    statusText.textContent = `Found ${currentResults.length} podcasts. Spotify verification is finishing...`;
+    let podcastIndexCount = currentResults.filter((result) => result.podcastIndexUrl).length;
+    statusText.textContent = `Found ${currentResults.length} podcasts with ${podcastIndexCount} verified by Podcast Index. Spotify verification is finishing...`;
     const spotifyResult = await spotifyPromise;
     if (spotifyResult.ok) {
       currentResults = mergeSpotifyUrls(currentResults, spotifyResult.batches.flat());
       render(currentResults);
       updateSourceCount(currentResults);
+      podcastIndexCount = currentResults.filter((result) => result.podcastIndexUrl).length;
       const spotifyCount = currentResults.filter((result) => result.spotifyUrl).length;
       statusText.textContent = spotifyCount
-        ? `Found ${currentResults.length} podcasts and verified ${spotifyCount} Spotify links.`
-        : `Found ${currentResults.length} podcasts. No verified Spotify matches found for this query.`;
+        ? `Found ${currentResults.length} podcasts with ${podcastIndexCount} verified by Podcast Index and ${spotifyCount} verified Spotify links.`
+        : `Found ${currentResults.length} podcasts with ${podcastIndexCount} verified by Podcast Index. No verified Spotify matches found for this query.`;
     } else {
-      statusText.textContent = `Found ${currentResults.length} podcasts. Spotify verification is unavailable until the Netlify Function and environment variables are live.`;
+      statusText.textContent = `Found ${currentResults.length} podcasts with ${podcastIndexCount} verified by Podcast Index. Spotify verification is unavailable until the Netlify Function and environment variables are live.`;
     }
   } catch {
     currentResults = [];

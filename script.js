@@ -54,6 +54,32 @@ async function fetchSpotifyShows(term) {
   return (await response.json()).shows || [];
 }
 
+async function fetchPodcastIndexFeeds(term, limit) {
+  const params = new URLSearchParams({ q: term, limit: String(Math.min(limit, 40)) });
+  const response = await fetch(`/.netlify/functions/podcast-index-search?${params}`);
+  if (!response.ok) throw new Error("Podcast Index search failed");
+  return (await response.json()).feeds || [];
+}
+
+function podcastIndexFeedToResult(feed) {
+  return {
+    collectionId: feed.itunesId ? `pi-itunes-${feed.itunesId}` : `pi-${feed.id}`,
+    collectionName: feed.title || "Untitled podcast",
+    artistName: feed.author || "Unknown creator",
+    genres: Object.values(feed.categories || {}),
+    trackCount: Number(feed.episodeCount || 0),
+    releaseDate: feed.lastUpdateTime ? new Date(feed.lastUpdateTime * 1000).toISOString() : "",
+    artworkUrl600: feed.imageUrl || "",
+    artworkUrl100: feed.imageUrl || "",
+    collectionViewUrl: "",
+    spotifyUrl: "",
+    iheartUrl: "",
+    podcastIndexUrl: feed.podcastIndexUrl || "",
+    feedUrl: feed.feedUrl || "",
+    websiteUrl: feed.websiteUrl || ""
+  };
+}
+
 function score(result, terms) {
   const title = (result.collectionName || "").toLowerCase();
   const haystack = [result.collectionName, result.artistName, ...(result.genres || [])].join(" ").toLowerCase();
@@ -97,13 +123,34 @@ function rank(results, query, sortMode) {
       collectionViewUrl: result.collectionViewUrl || "",
       spotifyUrl: result.spotifyUrl || "",
       iheartUrl: result.iheartUrl || "",
+      podcastIndexUrl: result.podcastIndexUrl || "",
+      feedUrl: result.feedUrl || "",
+      websiteUrl: result.websiteUrl || "",
       score: scored.score,
       matchedTerms: scored.matches
     };
     const existing = seen.get(id) || seen.get(nameKey);
-    if (!existing || shaped.score > existing.score) {
-      seen.set(id, shaped);
-      if (nameKey) seen.set(nameKey, shaped);
+    const merged = existing ? {
+      ...existing,
+      collectionName: existing.collectionName || shaped.collectionName,
+      artistName: existing.artistName || shaped.artistName,
+      genres: [...new Set([...(existing.genres || []), ...(shaped.genres || [])])],
+      trackCount: Math.max(existing.trackCount || 0, shaped.trackCount || 0),
+      releaseDate: existing.releaseDate || shaped.releaseDate,
+      artworkUrl100: existing.artworkUrl100 || shaped.artworkUrl100,
+      collectionViewUrl: existing.collectionViewUrl || shaped.collectionViewUrl,
+      spotifyUrl: existing.spotifyUrl || shaped.spotifyUrl,
+      iheartUrl: existing.iheartUrl || shaped.iheartUrl,
+      podcastIndexUrl: existing.podcastIndexUrl || shaped.podcastIndexUrl,
+      feedUrl: existing.feedUrl || shaped.feedUrl,
+      websiteUrl: existing.websiteUrl || shaped.websiteUrl,
+      score: Math.max(existing.score || 0, shaped.score || 0),
+      matchedTerms: [...new Set([...(existing.matchedTerms || []), ...(shaped.matchedTerms || [])])]
+    } : shaped;
+
+    if (!existing || shaped.score > existing.score || merged.podcastIndexUrl || merged.spotifyUrl || merged.collectionViewUrl) {
+      seen.set(id, merged);
+      if (nameKey) seen.set(nameKey, merged);
     }
   });
   const list = [...new Map([...seen.values()].map((item) => [item.collectionId, item])).values()];
@@ -142,6 +189,7 @@ function providers(result) {
   return [
     result.collectionViewUrl && ["Apple", "apple-link", result.collectionViewUrl],
     result.spotifyUrl && ["Spotify", "spotify-link", result.spotifyUrl],
+    result.podcastIndexUrl && ["Podcast Index", "podcast-index-link", result.podcastIndexUrl],
     result.iheartUrl && ["iHeart", "iheart-link", result.iheartUrl]
   ].filter(Boolean);
 }
@@ -205,27 +253,41 @@ async function search() {
   const spotifyPromise = Promise.all(terms.map((term) => fetchSpotifyShows(term)))
     .then((batches) => ({ ok: true, batches }))
     .catch((error) => ({ ok: false, error }));
+  const podcastIndexPromise = Promise.all(terms.map((term) => fetchPodcastIndexFeeds(term, limit)))
+    .then((batches) => ({ ok: true, batches }))
+    .catch((error) => ({ ok: false, error }));
   activeQuery = query;
   queryFocus.textContent = extractTerms(query).slice(0, 3).join(", ") || "podcasts";
-  statusText.textContent = "Searching Apple and checking Spotify in parallel...";
+  statusText.textContent = "Searching Apple, Spotify, and Podcast Index in parallel...";
   sourceCount.textContent = "Apple";
   resultsList.setAttribute("aria-busy", "true");
   syncUrl(query);
   try {
-    const batches = await Promise.all(terms.map((term) => fetchPodcasts(term, limit)));
-    currentResults = rank(batches.flat(), query, sortInput.value).slice(0, limit);
+    const [appleBatches, podcastIndexResult] = await Promise.all([
+      Promise.all(terms.map((term) => fetchPodcasts(term, limit))),
+      podcastIndexPromise
+    ]);
+    const podcastIndexResults = podcastIndexResult.ok
+      ? podcastIndexResult.batches.flat().map(podcastIndexFeedToResult)
+      : [];
+    currentResults = rank([...appleBatches.flat(), ...podcastIndexResults], query, sortInput.value).slice(0, limit);
     render(currentResults);
     if (!currentResults.length) {
       statusText.textContent = "No podcasts found. Try simpler keywords.";
       return;
     }
+    const activeSources = ["Apple"];
+    if (podcastIndexResult.ok && podcastIndexResults.length) activeSources.push("Podcast Index");
+    sourceCount.textContent = activeSources.join(" + ");
     statusText.textContent = `Found ${currentResults.length} podcasts. Spotify verification is finishing...`;
     const spotifyResult = await spotifyPromise;
     if (spotifyResult.ok) {
       currentResults = mergeSpotifyUrls(currentResults, spotifyResult.batches.flat());
       render(currentResults);
       const spotifyCount = currentResults.filter((result) => result.spotifyUrl).length;
-      sourceCount.textContent = spotifyCount ? "Apple + Spotify" : "Apple";
+      const finalSources = [...activeSources];
+      if (spotifyCount) finalSources.push("Spotify");
+      sourceCount.textContent = finalSources.join(" + ");
       statusText.textContent = spotifyCount
         ? `Found ${currentResults.length} podcasts and verified ${spotifyCount} Spotify links.`
         : `Found ${currentResults.length} podcasts. No verified Spotify matches found for this query.`;
@@ -260,6 +322,7 @@ async function submitFeedback(button, result, rankNumber) {
     creator: result.artistName || "",
     appleUrl: result.collectionViewUrl || "",
     spotifyUrl: result.spotifyUrl || "",
+    podcastIndexUrl: result.podcastIndexUrl || "",
     score: String(result.score || 0),
     pageUrl: window.location.href,
     submittedAt: new Date().toISOString()
@@ -282,7 +345,7 @@ async function submitFeedback(button, result, rankNumber) {
 }
 
 function csv() {
-  const rows = [["Rank", "Podcast", "Creator", "Episodes", "Apple Link", "Spotify Link", "iHeart Link", "Score"]];
+  const rows = [["Rank", "Podcast", "Creator", "Episodes", "Apple Link", "Spotify Link", "Podcast Index Link", "iHeart Link", "Score"]];
   currentResults.forEach((result, index) => {
     const row = [
       index + 1,
@@ -291,6 +354,7 @@ function csv() {
       result.trackCount || 0,
       result.collectionViewUrl || "",
       result.spotifyUrl || "",
+      result.podcastIndexUrl || "",
       result.iheartUrl || "",
       result.score || 0
     ];

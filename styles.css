@@ -101,6 +101,7 @@ h2 { margin: 6px 0 4px; font-size: clamp(1.1rem, 2.4vw, 1.45rem); line-height: 1
 .provider-link { display: inline-grid; min-height: 40px; place-items: center; padding: 0 14px; border: 1px solid rgba(255,255,255,.62); border-radius: 999px; color: var(--ink); font-weight: 900; text-decoration: none; box-shadow: inset 0 1px 1px rgba(255,255,255,.78); }
 .apple-link { background: linear-gradient(135deg, rgba(20,18,41,.92), rgba(80,72,122,.86)); color: white; }
 .spotify-link { background: linear-gradient(135deg, rgba(45,214,113,.92), rgba(28,168,94,.82)); color: #07170e; }
+.podcast-index-link { background: linear-gradient(135deg, rgba(119,200,255,.9), rgba(184,166,255,.82)); color: #171331; }
 .iheart-link { background: linear-gradient(135deg, rgba(231,79,163,.92), rgba(216,58,87,.86)); color: white; }
 .feedback-actions {
   display: flex;

@@ -263,7 +263,9 @@ function verifiedSources(results) {
 
 function updateSourceCount(results) {
   const sources = verifiedSources(results);
-  sourceCount.textContent = sources.length ? sources.join(" + ") : "-";
+  sourceCount.textContent = sources.length > 2
+    ? `${sources.slice(0, 2).join(" + ")}\n+ ${sources.slice(2).join(" + ")}`
+    : sources.join(" + ") || "-";
 }
 
 function render(results) {

@@ -311,7 +311,7 @@ async function submitFeedback(button, result, rankNumber) {
   const originalText = button.textContent;
   const vote = button.dataset.vote;
   button.disabled = true;
-  button.textContent = vote === "up" ? "Liked" : "Noted";
+  button.textContent = vote === "up" ? "✓" : "✓";
 
   const payload = {
     "form-name": "podme-feedback",

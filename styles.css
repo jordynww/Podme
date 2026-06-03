@@ -86,7 +86,7 @@ textarea:focus, select:focus, button:focus-visible, a:focus-visible { outline: 3
 .insights div { min-height: 86px; padding: 16px; border-radius: 24px; }
 .source-insight { display: flex; flex-direction: column; }
 .insights span { display: block; color: var(--ink); font-size: clamp(1.35rem, 3vw, 2rem); font-weight: 950; line-height: 1.05; }
-#source-count { font-size: clamp(.34rem, .75vw, .5rem); line-height: 1.25; }
+#source-count { font-size: clamp(.51rem, 1.125vw, .75rem); line-height: 1.25; }
 .insights p { margin: 8px 0 0; color: var(--muted); font-size: .82rem; font-weight: 850; text-transform: uppercase; }
 .source-insight p { margin-top: auto; }
 .results-list { display: grid; gap: 14px; padding: 0; margin: 0; list-style: none; }

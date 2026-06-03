@@ -12,6 +12,7 @@ const template = document.querySelector("#result-template");
 
 const defaultQuery = "Give me the best podcasts where I can learn everything there is to know about PE/VC";
 let currentResults = [];
+let activeQuery = "";
 const stopWords = new Set("a about all an and are as at be best can do everything for from get give how i in into is it know learn me of on or podcast podcasts show shows that the there to want where with you".split(" "));
 const forcedExpansionTerms = new Set(["artificial intelligence", "machine learning"]);
 
@@ -47,7 +48,7 @@ async function fetchPodcasts(term, limit) {
 }
 
 async function fetchSpotifyShows(term) {
-  const params = new URLSearchParams({ q: term, limit: "50" });
+  const params = new URLSearchParams({ q: term, limit: "10" });
   const response = await fetch(`/.netlify/functions/spotify-search?${params}`);
   if (!response.ok) throw new Error("Spotify search failed");
   return (await response.json()).shows || [];
@@ -186,6 +187,9 @@ function render(results) {
       link.textContent = name;
       actions.append(link);
     });
+    node.querySelectorAll(".feedback-button").forEach((button) => {
+      button.addEventListener("click", () => submitFeedback(button, result, index + 1));
+    });
     resultsList.append(node);
   });
 }
@@ -197,30 +201,35 @@ function syncUrl(query) {
 async function search() {
   const query = queryInput.value.trim() || defaultQuery;
   const limit = Number(limitInput.value);
+  const terms = searchTerms(query);
+  const spotifyPromise = Promise.all(terms.map((term) => fetchSpotifyShows(term)))
+    .then((batches) => ({ ok: true, batches }))
+    .catch((error) => ({ ok: false, error }));
+  activeQuery = query;
   queryFocus.textContent = extractTerms(query).slice(0, 3).join(", ") || "podcasts";
-  statusText.textContent = "Searching live podcast listings...";
+  statusText.textContent = "Searching Apple and checking Spotify in parallel...";
   sourceCount.textContent = "Apple";
   resultsList.setAttribute("aria-busy", "true");
   syncUrl(query);
   try {
-    const batches = await Promise.all(searchTerms(query).map((term) => fetchPodcasts(term, limit)));
+    const batches = await Promise.all(terms.map((term) => fetchPodcasts(term, limit)));
     currentResults = rank(batches.flat(), query, sortInput.value).slice(0, limit);
     render(currentResults);
     if (!currentResults.length) {
       statusText.textContent = "No podcasts found. Try simpler keywords.";
       return;
     }
-    statusText.textContent = `Found ${currentResults.length} podcasts. Checking Spotify for verified show links...`;
-    try {
-      const spotifyBatches = await Promise.all(searchTerms(query).map((term) => fetchSpotifyShows(term)));
-      currentResults = mergeSpotifyUrls(currentResults, spotifyBatches.flat());
+    statusText.textContent = `Found ${currentResults.length} podcasts. Spotify verification is finishing...`;
+    const spotifyResult = await spotifyPromise;
+    if (spotifyResult.ok) {
+      currentResults = mergeSpotifyUrls(currentResults, spotifyResult.batches.flat());
       render(currentResults);
       const spotifyCount = currentResults.filter((result) => result.spotifyUrl).length;
       sourceCount.textContent = spotifyCount ? "Apple + Spotify" : "Apple";
       statusText.textContent = spotifyCount
         ? `Found ${currentResults.length} podcasts and verified ${spotifyCount} Spotify links.`
         : `Found ${currentResults.length} podcasts. No verified Spotify matches found for this query.`;
-    } catch {
+    } else {
       statusText.textContent = `Found ${currentResults.length} podcasts. Spotify verification is unavailable until the Netlify Function and environment variables are live.`;
     }
   } catch {
@@ -230,6 +239,46 @@ async function search() {
   } finally {
     resultsList.removeAttribute("aria-busy");
   }
+}
+
+function encodeForm(data) {
+  return new URLSearchParams(data).toString();
+}
+
+async function submitFeedback(button, result, rankNumber) {
+  const originalText = button.textContent;
+  const vote = button.dataset.vote;
+  button.disabled = true;
+  button.textContent = vote === "up" ? "Liked" : "Noted";
+
+  const payload = {
+    "form-name": "podme-feedback",
+    vote,
+    query: activeQuery || queryInput.value.trim(),
+    rank: String(rankNumber),
+    podcast: result.collectionName || "",
+    creator: result.artistName || "",
+    appleUrl: result.collectionViewUrl || "",
+    spotifyUrl: result.spotifyUrl || "",
+    score: String(result.score || 0),
+    pageUrl: window.location.href,
+    submittedAt: new Date().toISOString()
+  };
+
+  try {
+    await fetch("/", {
+      method: "POST",
+      headers: { "Content-Type": "application/x-www-form-urlencoded" },
+      body: encodeForm(payload)
+    });
+  } catch {
+    button.textContent = "Saved locally";
+  }
+
+  window.setTimeout(() => {
+    button.disabled = false;
+    button.textContent = originalText;
+  }, 1800);
 }
 
 function csv() {

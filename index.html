@@ -66,6 +66,20 @@
       </section>
     </main>
 
+    <form name="podme-feedback" method="POST" data-netlify="true" netlify hidden>
+      <input type="hidden" name="form-name" value="podme-feedback">
+      <input type="hidden" name="vote">
+      <input type="hidden" name="query">
+      <input type="hidden" name="rank">
+      <input type="hidden" name="podcast">
+      <input type="hidden" name="creator">
+      <input type="hidden" name="appleUrl">
+      <input type="hidden" name="spotifyUrl">
+      <input type="hidden" name="score">
+      <input type="hidden" name="pageUrl">
+      <input type="hidden" name="submittedAt">
+    </form>
+
     <template id="result-template">
       <li class="result-card">
         <img class="artwork" alt="">
@@ -76,6 +90,11 @@
           <p class="meta"></p>
           <div class="tags"></div>
           <div class="result-actions"></div>
+          <div class="feedback-actions" aria-label="Was this result helpful?">
+            <span>Helpful?</span>
+            <button class="feedback-button" type="button" data-vote="up" aria-label="This result was helpful">Thumbs up</button>
+            <button class="feedback-button" type="button" data-vote="down" aria-label="This result was not helpful">Thumbs down</button>
+          </div>
         </div>
       </li>
     </template>

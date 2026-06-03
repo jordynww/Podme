@@ -252,6 +252,20 @@ function providers(result) {
   ].filter(Boolean);
 }
 
+function verifiedSources(results) {
+  const sources = [];
+  if (results.some((result) => result.collectionViewUrl)) sources.push("Apple");
+  if (results.some((result) => result.spotifyUrl)) sources.push("Spotify");
+  if (results.some((result) => result.podcastIndexUrl)) sources.push("Podcast Index");
+  if (results.some((result) => result.iheartUrl)) sources.push("iHeart");
+  return sources;
+}
+
+function updateSourceCount(results) {
+  const sources = verifiedSources(results);
+  sourceCount.textContent = sources.length ? sources.join(" + ") : "-";
+}
+
 function render(results) {
   resultsList.textContent = "";
   resultCount.textContent = String(results.length);
@@ -317,7 +331,7 @@ async function search() {
   activeQuery = query;
   queryFocus.textContent = focusLabel(query);
   statusText.textContent = "Searching Apple, Spotify, and Podcast Index in parallel...";
-  sourceCount.textContent = "Apple";
+  sourceCount.textContent = "-";
   resultsList.setAttribute("aria-busy", "true");
   syncUrl(query);
   try {
@@ -331,23 +345,18 @@ async function search() {
     currentResults = rank([...appleBatches.flat(), ...podcastIndexResults], query, sortInput.value).slice(0, limit);
     currentResults = mergePodcastIndexUrls(currentResults, podcastIndexResults);
     render(currentResults);
+    updateSourceCount(currentResults);
     if (!currentResults.length) {
       statusText.textContent = "No podcasts found. Try simpler keywords.";
       return;
     }
-    const activeSources = ["Apple"];
-    const podcastIndexCount = currentResults.filter((result) => result.podcastIndexUrl).length;
-    if (podcastIndexCount) activeSources.push("Podcast Index");
-    sourceCount.textContent = activeSources.join(" + ");
     statusText.textContent = `Found ${currentResults.length} podcasts. Spotify verification is finishing...`;
     const spotifyResult = await spotifyPromise;
     if (spotifyResult.ok) {
       currentResults = mergeSpotifyUrls(currentResults, spotifyResult.batches.flat());
       render(currentResults);
+      updateSourceCount(currentResults);
       const spotifyCount = currentResults.filter((result) => result.spotifyUrl).length;
-      const finalSources = [...activeSources];
-      if (spotifyCount) finalSources.push("Spotify");
-      sourceCount.textContent = finalSources.join(" + ");
       statusText.textContent = spotifyCount
         ? `Found ${currentResults.length} podcasts and verified ${spotifyCount} Spotify links.`
         : `Found ${currentResults.length} podcasts. No verified Spotify matches found for this query.`;
@@ -357,6 +366,7 @@ async function search() {
   } catch {
     currentResults = [];
     render(currentResults);
+    updateSourceCount(currentResults);
     statusText.textContent = "Live search was unavailable. Try again when the network is reachable.";
   } finally {
     resultsList.removeAttribute("aria-busy");

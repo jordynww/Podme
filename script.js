@@ -40,6 +40,13 @@ function searchTerms(text) {
   return [...new Set([terms.slice(0, 7).join(" "), ...expandQuery(text)].filter(Boolean))].slice(0, 5);
 }
 
+function focusLabel(text) {
+  const cleaned = text.replace(/\s+/g, " ").trim();
+  const words = normalize(cleaned).replace(/\//g, " ").split(" ").filter((word) => word && !stopWords.has(word));
+  if (words.length > 0 && words.length <= 4) return words.join(" ");
+  return extractTerms(text).slice(0, 3).join(" + ") || "podcasts";
+}
+
 async function fetchPodcasts(term, limit) {
   const params = new URLSearchParams({ term, media: "podcast", entity: "podcast", country: "US", limit: String(limit) });
   const response = await fetch(`https://itunes.apple.com/search?${params}`);
@@ -90,7 +97,8 @@ function score(result, terms) {
   const episodeScore = Math.min(Number(result.trackCount || 0), 400) / 8;
   const boost = ["private equity", "venture capital", "startup investing", "startup funding", "buyout", "vc"].filter((term) => title.includes(term)).length * 10;
   const penalty = ["germany", "cybersecurity", "blockchain", "crypto", "web3", "real estate", "personal finance"].filter((term) => title.includes(term)).length * 8;
-  return { score: Math.round(matches.length * 14 + titleHits * 12 + genreHits * 8 + episodeScore + boost - penalty), matches };
+  const rawScore = Math.round(matches.length * 14 + titleHits * 12 + genreHits * 8 + episodeScore + boost - penalty);
+  return { score: Math.max(0, Math.min(100, rawScore)), matches };
 }
 
 function normalizeName(value) {
@@ -262,7 +270,7 @@ function render(results) {
     artworkImg.src = result.artworkUrl100 || placeholder(result.collectionName);
     artworkImg.alt = result.collectionName || "Podcast artwork";
     node.querySelector(".rank").textContent = `#${index + 1}`;
-    node.querySelector(".score").textContent = `${result.score} match score`;
+    node.querySelector(".score").textContent = `${result.score}/100 match score`;
     node.querySelector("h2").textContent = result.collectionName || "Untitled";
     node.querySelector(".creator").textContent = result.artistName || "Unknown";
     node.querySelector(".meta").textContent = `${result.trackCount || "?"} episodes`;
@@ -307,7 +315,7 @@ async function search() {
     .then((batches) => ({ ok: true, batches }))
     .catch((error) => ({ ok: false, error }));
   activeQuery = query;
-  queryFocus.textContent = extractTerms(query).slice(0, 3).join(", ") || "podcasts";
+  queryFocus.textContent = focusLabel(query);
   statusText.textContent = "Searching Apple, Spotify, and Podcast Index in parallel...";
   sourceCount.textContent = "Apple";
   resultsList.setAttribute("aria-busy", "true");
